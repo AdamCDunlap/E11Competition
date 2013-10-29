@@ -24,9 +24,6 @@ void setup() {
 }
 
 void loop() {
-
-    //Serial.println(analogRead(LIGHTPIN));
-    
     int seedNum = readGC();
     if (seedNum != 0) {
         Serial.print(abs(seedNum));
