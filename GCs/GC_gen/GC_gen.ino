@@ -13,8 +13,9 @@ void setup()
     for(int i=0;i<numTests;i++)
     {
         uint32_t gc=goldCode(fb1,fb2,seedList[i]);
-        printGC(gc);
-        Serial.println();
+        char buf[31];
+        printGC(gc, buf);
+        Serial.println(buf);
     }
 
 }

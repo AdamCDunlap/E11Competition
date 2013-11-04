@@ -1,10 +1,14 @@
 #include "GoldCode.h"
 #include <limits.h>
-#ifndef ARDUINO
-#include <stdio.h>
-#else
-#include <Arduino.h>
+
+#ifndef abs
+template<typename T> T abs(T x) {
+    return x < 0? -x : x;
+}
 #endif
+
+static uint32_t nextStep(uint32_t a, int feedbackList[]);
+static uint32_t shiftRegister(uint32_t seed, int feedbackList[]);
 
 // By Patrick McKeen and Adam Dunlap
 
@@ -15,7 +19,7 @@ uint32_t GoldCode::goldCode(int feedback1[], int feedback2[], int seed2) //retur
     return reg1^reg2; // XORs the 2 outputs of the LFSRs together
 }
 
-uint32_t GoldCode::shiftRegister(uint32_t seed, int feedbackList[]) //finds the shift register for the LFSR
+uint32_t shiftRegister(uint32_t seed, int feedbackList[]) //finds the shift register for the LFSR
 {
     uint32_t reg = 0;
     uint32_t b = seed;
@@ -26,7 +30,7 @@ uint32_t GoldCode::shiftRegister(uint32_t seed, int feedbackList[]) //finds the 
     return reg;
 }
 
-uint32_t GoldCode::nextStep(uint32_t a, int feedbackList[]) //finds the next value outpu of the LFSR
+uint32_t nextStep(uint32_t a, int feedbackList[]) //finds the next value outpu of the LFSR
 {
     uint32_t r= a >> 1;//shifts one place to the right
     bool addOne = false;
@@ -41,8 +45,10 @@ uint32_t GoldCode::nextStep(uint32_t a, int feedbackList[]) //finds the next val
 int GoldCode::dotProduct(uint32_t gc1, uint32_t gc2) {
     int score = 0;
     for (int i=0; i<31; i++) {
+        // If the ith bit is the same in each one, add 1
+        // gc1 & (1UL << i) is the ith bit (although still kept in the same position)
         if ((gc1 & (1UL << i)) == (gc2 & (1UL << i))) score++;
-        else                                      score--;
+        else                                          score--;
     }
     return score;
 
@@ -65,30 +71,21 @@ int GoldCode::dotProduct(uint32_t gc1, uint32_t gc2) {
 
 int GoldCode::sameGC(uint32_t gc1, uint32_t gc2) {
 
-    int best_score = -INT_MIN;
+    int score = dotProduct(gc1, gc2);
+    if (abs(score) >= 22) return score;
     for (int i=0; i<31; i++) {
-        int score = dotProduct(gc1, gc2);
         gc2 = ((gc2 & 1) << 30) | gc2 >> 1;
-        if (score > best_score) best_score = score;
-        //printf("Score: %d\n", score);
-        //Serial.print("Score, shifted ");
-        //Serial.print(i);
-        //Serial.print(" times, is ");
-        //Serial.println(score);
+        score = dotProduct(gc1, gc2);
+        if (abs(score) >= 22) return score;
     }
-    //return best_score;
-    return best_score >= 25;
+    // If none of them have a good enough match, return 0
+    return 0;
 }
 
-
-void GoldCode::printGC(uint32_t gc) {
-    for (uint32_t i = 1L << 30; i != 0; i >>= 1) {
-        int c = !!(i & gc) + '0';
-#ifdef ARDUINO
-        Serial.write(c);
-#else
-        putchar(c);
-#endif
-        
+void GoldCode::printGC(uint32_t gc, char* res) {
+    res[31] = '\0'; // null terminate
+    for (int i=0; i<31; i++) {
+        res[i] = (gc & 1) + '0';
+        gc >>= 1;
     }
 }

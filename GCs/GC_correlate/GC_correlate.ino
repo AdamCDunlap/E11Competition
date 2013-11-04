@@ -1,6 +1,19 @@
 //Patrick McKeen
 //pmckeen@g.hmc.edu
 
+int maxCorr(long* arr);
+long* correlationList(long gc1, long gc2);
+long shift(long gc, int val);
+boolean NXOR(boolean a, boolean b);
+long dotproduct(long a, long b);
+long powerOf2(int v);
+String binaryGC(long gc);
+long goldCode(int feedback1[], int feedback2[], int seed2);
+long shiftRegister(long a, int feedbackList[]);
+long nextStep(long a, int feedbackList[]);
+long rightmost(int a);
+
+
 void setup()
 {
   Serial.begin(115200);

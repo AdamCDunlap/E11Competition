@@ -17,7 +17,6 @@ int readGC();
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("Good morning");
     for (int i=0; i<NUM_CACHED_GCs; i++) {
         cached_gcs[i] = GoldCode::goldCode(fb1, fb2, cached_gc_seeds[i]);
     }
@@ -26,24 +25,21 @@ void setup() {
 void loop() {
     int seedNum = readGC();
     if (seedNum != 0) {
-        Serial.print(abs(seedNum));
-        if (seedNum > 0) {
-            Serial.println(": White");
-        }
-        else {
-            Serial.println(": Green");
-        }
+        //Serial.print(abs(seedNum));
+        //if (seedNum > 0) {
+        //    Serial.println(": White");
+        //}
+        //else {
+        //    Serial.println(": Green");
+        //}
         
     }
-    //while(1);
 }
 
 int readGC() {
     unsigned int readings[31];
     unsigned int sum = 0;
-    //Serial.println("Looping");
     for (int i=0; i<31;) {
-        //runEveryMicros(250) {
         static unsigned long lastReadTime = micros();
         if (micros() - lastReadTime >= 250) {
             lastReadTime = micros();
@@ -57,31 +53,27 @@ int readGC() {
     unsigned int avg = sum/31;
     
     for (int i=0; i < 31; i++) {
+        // For each reading, convert it to binary by comparing to the average, then 
+        //  OR it into the GC backwards, with the first element of the array
+        //  going in the 30th position, etc
         gc |= (uint32_t)(readings[30-i] < avg) << i;
     }
-    //GoldCode::printGC(gc);
-    //Serial.println();
-    
-    for (int j=0; j<2; j++) {
-        // first try non-inverted
-        for (int i=0; i<NUM_CACHED_GCs; i++) {
-            //Serial.print("With gold code ");
-            //Serial.println(i);
-            if (GoldCode::sameGC(gc, cached_gcs[i])) {
-                //Serial.println("Readings:");
-                //for (int j=0; j<31; j++) {
-                //    Serial.println(readings[j]);
-                //}
-                //Serial.println();
-                //Serial.print("avg: ");
-                //Serial.println(avg);
-                // If we're on the second loop, negate the value to signifigy that we inverted it
-                return (j>0? -1 : 1) * cached_gc_seeds[i];
-            }
+
+    // Check the gold code against each one of the possibilities
+    for (int i=0; i<NUM_CACHED_GCs; i++) {
+        // sameGC returns the positive score if it's the same, or the negative score if it's inverted
+        int same = GoldCode::sameGC(gc, cached_gcs[i]);
+        if (same != 0) {
+            Serial.print("Detected Gold Code! ID is ");
+            Serial.print(cached_gc_seeds[i]);
+            Serial.print(", the correlation is ");
+            Serial.print(abs(same));
+            Serial.print(", and the color is ");
+            Serial.print(same > 0? "White" : "Green");
+            Serial.println();
+            return  (same > 0? +1 : -1) * cached_gc_seeds[i];
         }
-        // now invert and try again
-        gc = ~gc;
     }
-    
+    // If nothing matched, return 0
     return 0;
 }
