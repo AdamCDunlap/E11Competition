@@ -112,6 +112,8 @@ void MudduinoBot::initSensors() {
     pinMode(reflect_center_pin, INPUT);
     pinMode(reflect_side_pin, INPUT);
     pinMode(team_pin, INPUT);
+    pinMode(bumper_pin, INPUT);
+    digitalWrite(bumper_pin, HIGH); // enable pullup
 }
 int MudduinoBot::getDist() {
     return analogRead(dist_pin);

@@ -18,6 +18,7 @@ void setup() {
     bot.cache_GCs(10, seeds, fb1, fb2);
 
     side = bot.getTeam();
+    Serial.println(side);
 }
 
 bool wrong_color(int seedNum) {
@@ -47,10 +48,10 @@ void loop() {
             bot.move(255 - (timeInState - 250)/4);
         }
         else {
-            // Seomthing weird's going on, stop
-            bot.move(0);
+            bot.move(150);
         }
-        if (bot.getBumper()) {
+
+        if (bot.getBumper() || timeInState > 3000) {
             primary_state = BEELINE_FIND_CIRCLE;
             switchTime = curTime;
             secondary_state = 0;
@@ -60,20 +61,20 @@ void loop() {
         switch(secondary_state) {
         case 0:
             bot.move(-150, -50);
-            if (timeInState > 350) secondary_state++;
+            if ((side == 1 && timeInState > 350) || (side == 0 && timeInState > 750)) secondary_state++;
             break;
         case 1:
             bot.move(150, -50);
             int rs = bot.getSideReflect();
-            if (rs > 900) { // on black
+            int rc = bot.getCenterReflect();
+            if (rc > 800) { // on black
                 bot.halt();
             }
-            else if (rs > 700) { // on grey
+            else if (rc > 700) { // on grey
                 primary_state = ON_CIRCLE;
                 switchTime = curTime;
                 secondary_state = 0;
             }
-                
         }
         break;
     case ON_CIRCLE:
@@ -85,31 +86,33 @@ void loop() {
             int rs = bot.getSideReflect();
             int rc = bot.getCenterReflect();
             int state;
+            static unsigned long lastStateChangeTime = 0;
             if (rs < 700) state = 0;
             else if (rc > 700) state = 1;
             else state = 2;
             if (state != lastState) {
-                timer = curTime;
+                lastStateChangeTime = curTime;
             }
-            if (curTime - timer > 1000) { // We've been in one state for a second
+            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a second
                 secondary_state = 100;
+                lastStateChangeTime = curTime;
                 timer = curTime;
             }
             switch (state) {
             case 0: // side is on white
-                bot.move(150, -100);
+                bot.move(120, -70);
                 break;
             case 1: // center is on grey
-                bot.move(150, 50);
+                bot.move(120, 50);
                 break;
             case 2:
-                bot.move(150, -70);
+                bot.move(120, -20);
                 break;
             }
             bot.setServo(0);
 
             int seedNum = bot.readGC(MudduinoBot::LEFT);
-            if (wrong_color(seedNum)) {
+            if (wrong_color(seedNum) && abs(seedNum) < 5 ) {
                 bot.halt();
                 secondary_state = 1;
                 timer = curTime;
@@ -127,29 +130,24 @@ void loop() {
             break;
 
         case 1:
-            bot.move(-200);
+            //bot.move(-200);
             timer = curTime;
             secondary_state = 2;
             break;
         case 2:
-            if (curTime - timer > 200) {
+            //if (curTime - timer > 100) {
                 secondary_state = 3;
-            }
+            //}
             break;
         case 3:
             bot.setServo(180);
-            if (curTime - timer > 500) {
-                bot.move(-200, -50);
+            if (curTime - timer > 1000) {
                 timer = curTime;
                 secondary_state = 0;
             }
             break;
         }
-
-        
         break;
-        
     }
-    
 }
 
