@@ -1,6 +1,5 @@
 // GC_detect.ino
 #include <GoldCode.h>
-#include <RunEvery.h>
 
 const int LIGHTPIN = A5;
 
