@@ -59,11 +59,11 @@ void MudduinoBot::move(int fwd, int turn) {
     int rightPow = fwd - turn;
     leftPow = constrain(leftPow, -255, 255);
     rightPow = constrain(rightPow, -255, 255);
-    //Serial.print("Left: ");
-    //Serial.print(leftPow);
-    //Serial.print("\tRight: ");
-    //Serial.print(rightPow);
-    //Serial.println();
+    Serial.print("Left: ");
+    Serial.print(leftPow);
+    Serial.print("\tRight: ");
+    Serial.print(rightPow);
+    Serial.println();
     analogWrite(len_pin, abs(leftPow));
     analogWrite(ren_pin, abs(rightPow));
 
