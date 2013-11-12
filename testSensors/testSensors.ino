@@ -22,16 +22,14 @@ void setup() {
 
 void loop() {
     
-    PRINT(bot.getDist());
-    PRINT(bot.getLight());
+    //PRINT(bot.getDist());
     PRINT(bot.getFwdLight());
-    PRINT(+  bot.getLeftLight());
+    PRINT(+bot.getLeftLight());
     PRINT(bot.getRightLight());
-    PRINT(bot.getReflect());
     PRINT(bot.getCenterReflect());
     PRINT(bot.getSideReflect());
-    //PRINT(bot.readGC(MudduinoBot::FORWARD));
-    //PRINT(bot.readGC(MudduinoBot::LEFT));
-    //PRINT(bot.readGC(MudduinoBot::RIGHT));
+    PRINT(bot.readGC(MudduinoBot::FORWARD));
+    PRINT(bot.readGC(MudduinoBot::LEFT));
+    PRINT(bot.readGC(MudduinoBot::RIGHT));
     Serial.println();
 }
