@@ -1,4 +1,5 @@
 #include <MudduinoBot.h>
+//using namespace MudduinoBot;
 
 void MudduinoBot::motorEn() {
     digitalWrite(len_pin, HIGH);
@@ -163,15 +164,18 @@ void MudduinoBot::cache_GCs(int num_cached, int* seeds, int* fb1, int* fb2) {
     }
 }
 
-int MudduinoBot::readGC(lightSensor l) {
-    unsigned int readings[31];
+int MudduinoBot::readGC(lightSensor l, unsigned int* variance, unsigned int* readings) {
     unsigned int sum = 0;
     uint8_t lightPin;
     switch(l) {
         case LEFT: lightPin = light_left_pin; break;
         case RIGHT: lightPin = light_right_pin; break;
         case FORWARD: lightPin = light_fwd_pin; break;
+        default: lightPin = -1; Serial.println("readGC called with unknown light sensor");
     }
+
+    unsigned int buf[31];
+    if (readings == NULL) readings = buf;
     for (int i=0; i<31;) {
         static unsigned long lastReadTime = micros();
         if (micros() - lastReadTime >= 250) {
@@ -182,9 +186,16 @@ int MudduinoBot::readGC(lightSensor l) {
         }
     }
 
-    uint32_t gc = 0;
     unsigned int avg = sum/31;
+
+    if (variance != NULL) {
+        for (int i=0; i<31; i++) {
+            int diff = readings[i] - avg;
+            *variance += diff * diff;
+        }
+    }
     
+    uint32_t gc = 0;
     for (int i=0; i < 31; i++) {
         // For each reading, convert it to binary by comparing to the average, then 
         //  OR it into the GC backwards, with the first element of the array
@@ -204,6 +215,62 @@ int MudduinoBot::readGC(lightSensor l) {
     return 0;
 }
 
+bool MudduinoBot::readGC_async(uint32_t* GC_ret, lightSensor l, LightVals** vals) {
+    unsigned long curTime = micros();
+    if (vals != NULL) *vals = &lightVals[l];
+    
+    if (curTime - lightVals[l].lastReadTime < 250) {
+        Serial.println('a');
+        return false;
+    }
+    lightVals[l].lastReadTime = curTime;
+    //Serial.println(curTime);
+
+    uint8_t lightPin;
+    switch(l) {
+        case LEFT: lightPin = light_left_pin; break;
+        case RIGHT: lightPin = light_right_pin; break;
+        case FORWARD: lightPin = light_fwd_pin; break;
+        default: lightPin = -1; Serial.println("readGC_async called with unknown light sensor"); return false;
+    }
+    lightVals[l].vals[lightVals[l].pos] = analogRead(lightPin);
+    lightVals[l].pos++;
+    
+    if (lightVals[l].pos >= 32) {
+        lightVals[l].pos = 0;
+        
+        unsigned int sum = 0;
+        for (int i=0; i<31; i++) {
+            sum += lightVals[l].vals[i];
+        }
+        unsigned int avg = sum/31;
+
+        uint32_t gc = 0;
+        
+        for (int i=0; i < 31; i++) {
+            // For each reading, convert it to binary by comparing to the average, then 
+            //  OR it into the GC backwards, with the first element of the array
+            //  going in the 30th position, etc
+            gc |= (uint32_t)(lightVals[l].vals[30-i] < avg) << i;
+        }
+
+        // Check the gold code against each one of the possibilities
+        for (int i=0; i<num_cached_GCs; i++) {
+            // sameGC returns the positive score if it's the same, or the negative score if it's inverted
+            int same = GoldCode::sameGC(gc, cached_gcs[i]);
+            if (same != 0) {
+                *GC_ret = (same > 0? +1 : -1) * cached_gc_seeds[i];
+                return true;
+            }
+        }
+        // If nothing matched, return 0
+        *GC_ret = 0;
+        return true;
+    }
+    return false;
+}
+
+
 void MudduinoBot::initLEDs() {
     pinMode(led_pin, OUTPUT);
 }
@@ -217,4 +284,18 @@ void MudduinoBot::flash_GC(int which, bool inverted) {
             i++;
         }
     }
+}
+
+bool MudduinoBot::flash_GC_async(int which, bool inverted) {
+    //unsigned long curTime = micros();
+    //if (curTime - flashPos.lastTime < 250) return false;
+    //flashPos.lastTime = curTime;
+
+    digitalWrite(led_pin, inverted ^ !!(cached_gcs[which] & (1UL << (30 - flashPos.pos))));
+    flashPos.pos++;
+    if (flashPos.pos >= 32) {
+        flashPos.pos = 0;
+        return true;
+    }
+    return false;
 }

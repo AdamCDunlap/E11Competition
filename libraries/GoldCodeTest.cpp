@@ -43,5 +43,19 @@ int main() {
     printf("Dot product of gc1 and gc9 is %d\n", GoldCode::dotProduct(gc1, gc9));
     printf("Dot product of gc1 and gc1 is %d\n", GoldCode::dotProduct(gc1, gc1));
     bool same = GoldCode::sameGC(gc1, gc8);
+
+    uint32_t g0   = 0x00000000UL;
+    uint32_t g1   = 0x00000001UL;
+    uint32_t g3   = 0x00000003UL;
+    uint32_t g7   = 0x00000007UL;
+    uint32_t g15  = 0x0000000fUL;
+    uint32_t g31  = 0x0000001fUL;
+    uint32_t gall = 0x7fffffffUL;
+    printf("Dot product of g0 and g1 is %d\n", GoldCode::dotProduct(g0, g1));
+    printf("Dot product of g0 and g3 is %d\n", GoldCode::dotProduct(g0, g3));
+    printf("Dot product of g0 and g7 is %d\n", GoldCode::dotProduct(g0, g7));
+    printf("Dot product of g0 and g15 is %d\n", GoldCode::dotProduct(g0, g15));
+    printf("Dot product of g0 and g31 is %d\n", GoldCode::dotProduct(g0, g31));
+    printf("Dot product of g0 and g31 is %d\n", GoldCode::dotProduct(g0, gall));
     printf("They %s\n", same? "the same" : "different");
 }

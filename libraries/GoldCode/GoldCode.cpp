@@ -43,30 +43,30 @@ uint32_t nextStep(uint32_t a, int feedbackList[]) //finds the next value outpu o
 }
 
 int GoldCode::dotProduct(uint32_t gc1, uint32_t gc2) {
-    int score = 0;
-    for (int i=0; i<31; i++) {
-        // If the ith bit is the same in each one, add 1
-        // gc1 & (1UL << i) is the ith bit (although still kept in the same position)
-        if ((gc1 & (1UL << i)) == (gc2 & (1UL << i))) score++;
-        else                                          score--;
-    }
-    return score;
+    //int score = 0;
+    //for (int i=0; i<31; i++) {
+    //    // If the ith bit is the same in each one, add 1
+    //    // gc1 & (1UL << i) is the ith bit (although still kept in the same position)
+    //    if ((gc1 & (1UL << i)) == (gc2 & (1UL << i))) score++;
+    //    else                                          score--;
+    //}
+    //return score;
 
-    //// xor one GC with the NOT of the other, then make the top bit 0
-    //uint32_t v = (gc1 ^ ~gc2) & ~0x80000000;
+    // xor one GC with the NOT of the other, then make the top bit 0
+    uint32_t v = (gc1 ^ ~gc2) & ~0x80000000;
 
-    //// now count the bits in v, with code
-    //// From http://graphics.stanford.edu/~seander/bithacks.html
+    // now count the bits in v, with code
+    // From http://graphics.stanford.edu/~seander/bithacks.html
 
-    //// count bits set in this (32-bit value)
-    //uint32_t c; // store the total here
-    //
-    //c = v - ((v >> 1) & 0x55555555);
-    //c = ((c >> 2) & 0x33333333) + (c & 0x33333333);
-    //c = ((c >> 4) + c) & 0x0F0F0F0F;
-    //c = ((c >> 8) + c) & 0x00FF00FF;
-    //c = ((c >> 16) + c) & 0x0000FFFF;
-    //return c;
+    // count bits set in this (32-bit value)
+    uint32_t c; // store the total here
+    
+    c = v - ((v >> 1) & 0x55555555);
+    c = ((c >> 2) & 0x33333333) + (c & 0x33333333);
+    c = ((c >> 4) + c) & 0x0F0F0F0F;
+    c = ((c >> 8) + c) & 0x00FF00FF;
+    c = ((c >> 16) + c) & 0x0000FFFF;
+    return c*2 - 31;
 }
 
 int GoldCode::sameGC(uint32_t gc1, uint32_t gc2) {
