@@ -7,10 +7,6 @@
 #include <new.h>
 #include <stdlib.h>
 
-//namespace MudduinoBot {
-//    enum lightSensor { LEFT, RIGHT, FORWARD, NUM_LIGHT_SENSORS};
-//}
-
 class MudduinoBot {
 public:
     // Free pins: 0, 1, 5
@@ -85,7 +81,7 @@ public:
     void cache_GCs(int num_cached, int* seeds, int* fb1, int* fb2);
     // readings lets the user pass in a length-31 array into which the raw
     // light sensor values will be put
-    int readGC(lightSensor l = MudduinoBot::FORWARD, unsigned int* variance = NULL, unsigned int* readings = NULL);
+    int readGC(lightSensor l = MudduinoBot::FORWARD, unsigned long* variance = NULL, unsigned int* readings = NULL);
     struct LightVals {
         uint8_t pos; // next position in the array we will store
         unsigned int vals[31]; // array of light sensor values

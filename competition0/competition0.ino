@@ -20,8 +20,8 @@ struct Thresholds {
 
 int location=270;
 
-const int servo_out = 180;
 const int servo_in = 10;
+const int servo_out = 175;
 
 bool sideOnWhite(int rs) { return rs < thrs.SGW; }
 bool centerOnWhite(int rc) { return rc < thrs.CGW; }
@@ -30,7 +30,7 @@ bool sideOnGray(int rs) { return rs > thrs.SGW && rs < thrs.SBG; }
 bool sideOnBlack(int rs) { return rs > thrs.SBG; }
 bool centerOnBlack(int rc) { return rc > thrs.CBG; }
 void getThreshsFromEEPROM();
-void targetGC(bool seeGC, unsigned int frontVariance);
+void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight);
 
 // This function is called every 250 microseconds by a timer interrupt and keeps the gold codes a'flashin
 void flashMoreGC() {
@@ -43,7 +43,15 @@ void flashMoreGC() {
 void setup() {
     Serial.begin(115200);
     bot.begin();
-    Serial.println("Good morning");
+
+    //bot.setServo(servo_in);
+    //delay(1000);
+    //bot.setServo(servo_out);
+    //delay(1000);
+    //bot.setServo(servo_in);
+    //while(1);
+
+    Serial.println("Good morning! I was compiled at " __TIME__ " on " __DATE__);
     bot.setServo(servo_in);
 
     int fb1[] = {5,2,3,4,5}; //First characteristic polynomial
@@ -52,10 +60,10 @@ void setup() {
     bot.cache_GCs(10, seeds, fb1, fb2);
 
     side = bot.getTeam();
-    Serial.println(side);
 
     if (!side && bot.getBumper()) {
         getThreshsFromEEPROM();
+        while(true) ;
     }
     else {
         eeprom_read_block(&thrs, (void*)0, sizeof(thrs));
@@ -63,8 +71,8 @@ void setup() {
                 thrs.CGW, thrs.SGW, thrs.CBG, thrs.SBG);
     }
 
-    Timer1.initialize(250);
-    Timer1.attachInterrupt(flashMoreGC);
+    //Timer1.initialize(250);
+    //Timer1.attachInterrupt(flashMoreGC);
 }
 
 bool wrong_color(int seedNum) {
@@ -83,29 +91,25 @@ void loop() {
 
     int seedNumLeft = bot.readGC(MudduinoBot::LEFT);
     int seedNumRight = bot.readGC(MudduinoBot::RIGHT);
-    unsigned int frontVariance = -1;
+    unsigned long frontVariance = -1;
     int seedNumFront = bot.readGC(MudduinoBot::FORWARD, &frontVariance);
 
     runEvery(100) {
-        printf("Primary: %d Secondary: %4d rs: %4d rc: %4d Seeds: L:%2d R:%2d C:%2d frontVar: %3d\n",
-            primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance);
+        printf("Primary: %d Secondary: %4d rs: %4d rc: %4d Seeds: L:%2d R:%2d C:%2d frontVar: %10ld bump: %d\n",
+            primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance, bot.getBumper());
     }
 
     
 
     switch(primary_state) {
     case BEELINE:
-        targetGC(seedNumFront == 24, 0);
-        //    
-        //if (timeInState < 1000) {
-        //    bot.move(255);
-        //}
-        //else if (timeInState < 1500) {
-        //    bot.move(255 - (timeInState - 250)/3);
-        //}
-        //else {
-        //    bot.move(150);
-        //}
+            
+        if (timeInState < 1000) {
+            bot.move(255);
+        }
+        else {
+            targetGC(seedNumFront == 24, frontVariance, side);
+        }
 
         if (bot.getBumper() || timeInState > 2000) {
             primary_state = BEELINE_FIND_CIRCLE;
@@ -115,14 +119,15 @@ void loop() {
         }
         bot.setServo(servo_in);
         break;
+
     case BEELINE_FIND_CIRCLE:
         switch(secondary_state) {
         case 0:
-            bot.move(-150, -50);
-            if ((side == 1 && timeInState > 250) || (side == 0 && timeInState > 750)) secondary_state++;
+            bot.move(-150, -100);
+            if ((side == 1 && timeInState > 500) || (side == 0 && timeInState > 750)) secondary_state++;
             break;
         case 1:
-            bot.move(150, -50);
+            bot.move(150, 50);
             if (rc > thrs.CBG) { // on black
                 bot.halt();
             }
@@ -144,6 +149,7 @@ void loop() {
 
 
     case ON_CIRCLE:
+        bot.noTone();
         switch(secondary_state) {
         case 0:
         {
@@ -160,6 +166,11 @@ void loop() {
                 lastStateChangeTime = curTime;
             }
             if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
+                secondary_state = 100;
+                lastStateChangeTime = curTime;
+                timer = curTime;
+            }
+            if (bot.getBumper()) {
                 secondary_state = 100;
                 lastStateChangeTime = curTime;
                 timer = curTime;
@@ -191,7 +202,7 @@ void loop() {
                     location=315;
                     break;
             }  //END PATRICK MOD
-            if (wrong_color(seedNumLeft) && abs(seedNumLeft) < 5 ) {
+            if (wrong_color(seedNumLeft) && abs(seedNumLeft) < 5 && curTime - timer > 500) {
                 bot.halt();
                 secondary_state = 1;
                 timer = curTime;
@@ -210,10 +221,12 @@ void loop() {
             lastState = state;
             break;
         }
-        case 100: // Probably stuck, back up
+       // case 100: // Probably stuck, back up
+       // 
+        case 100:
             //bot.tone(880);
             bot.move(-200);
-            if (curTime - timer > 500){
+            if (curTime - timer > 300){
                 timer = curTime;
 
                 if (sideOnWhite(rs) && centerOnWhite(rc)) {
@@ -240,7 +253,7 @@ void loop() {
             static unsigned long turnTime;
             switch(white_state){
                 case 0:
-                    bot.move(0, 110);
+                    bot.move(0, 115);
                     if (abs(seedNumFront)<5 && seedNumFront != 0){
                         noGCtime=curTime;
                         white_state=1;
@@ -252,7 +265,7 @@ void loop() {
                         switchTime = curTime;
                     }
 
-                    if (curTime - timer > 3000) {
+                    if (curTime - timer > 5000) {
                         secondary_state = 100;
                         timer = curTime;
                     }
@@ -285,8 +298,8 @@ void loop() {
             break;
         }
         case 102: // stuck on gray
-            bot.move(-50, 100);
-            if (curTime - timer > 300) {
+            bot.move(-50, 120);
+            if (curTime - timer > 1000) {
                 secondary_state = 0;
             }
             break;
@@ -318,10 +331,11 @@ void loop() {
 
 
     case BLACK_LINE_FOLLOW: case FIND_BOX:
+        bot.tone(220);
         switch(secondary_state) {
         case 0:          //find the black line with gc5
         {
-            bot.move(0,70);
+            bot.move(0,100);
             if ((primary_state == BLACK_LINE_FOLLOW && seedNumFront == 5) || (primary_state == FIND_BOX && seedNumFront == 6) ) {
                 secondary_state=1;
             }
@@ -333,7 +347,7 @@ void loop() {
                 secondary_state=2;
             }
         }
-        case 2:
+        case 2: case 6:
         {
             // follow blackline
             static int lastState = 0;
@@ -365,20 +379,53 @@ void loop() {
             }
             bot.setServo(servo_in);
 
-            if (bot.getBumper()){
+            if (secondary_state == 2 && bot.getBumper()){
                 if ((side && seedNumFront == -6) || (!side && seedNumFront == 6 )) {
                     secondary_state = 3; // Diverge to black line code
+                    timer = curTime;
                 }
                 if ((side && seedNumFront == -5) || (!side && seedNumFront == 5 )) {
                     secondary_state = 13; // Diverge to box code
                 }
             }
+            if (secondary_state == 6 && centerOnGray(rc) && sideOnGray(rs)) {
+                secondary_state = 7;
+                timer = curTime;
+            }              
            
             lastState = state;
             break;
         }
-        case 3: // TODO: Come back!!
+        case 3:
+            bot.move(-100);
+            if (curTime - timer >= 100) {
+                secondary_state = 4;
+                timer = curTime;
+            }
             break;
+        case 4:
+            bot.move(0, 130);
+            if (curTime-timer>=150){
+              secondary_state =5;
+              timer=curTime;
+            }
+            break;
+        case 5:
+            bot.move(0,100);
+            if (centerOnBlack(rc)){
+                secondary_state=6; // above
+                timer=curTime;
+            }
+          break;
+        case 7:
+            bot.move(75, 120);
+            if (sideOnWhite(rs)) {
+              primary_state = ON_CIRCLE;
+              secondary_state = 0;
+              timer = curTime;
+            }
+            break;
+
 
         // This is  for box
         case 13: //has hit the beacon--turning
@@ -432,6 +479,7 @@ void getThreshsFromEEPROM() {
     
     Serial.println("Position over white and press bumper");
     while(!bot.getBumper()) ; // wait for press and release
+    delay(100);
     while(bot.getBumper()) ;
     int centerwhiteval = bot.getCenterReflect();
     int sidewhiteval = bot.getSideReflect();
@@ -444,6 +492,7 @@ void getThreshsFromEEPROM() {
     bot.tone(880, 500);
     Serial.println("Position over gray and press bumper");
     while(!bot.getBumper()) ; // wait for press and release
+    delay(100);
     while(bot.getBumper()) ;
     int centergrayval = bot.getCenterReflect();
     int sidegrayval = bot.getSideReflect();
@@ -456,6 +505,7 @@ void getThreshsFromEEPROM() {
     bot.tone(880, 500);
     Serial.println("Position over black and press bumper");
     while(!bot.getBumper()) ; // wait for press and release
+    delay(100);
     while(bot.getBumper()) ;
     int centerblackval = bot.getCenterReflect();
     int sideblackval = bot.getSideReflect();
@@ -474,6 +524,7 @@ void getThreshsFromEEPROM() {
            "Press bumper to confirm write, or reset to clear.\n",
             thrs.CGW, thrs.SGW, thrs.CBG, thrs.SBG);
     while(!bot.getBumper()) ;
+    delay(100);
     while(bot.getBumper()) ;
 
     eeprom_write_block(&thrs, (void*)0, sizeof(thrs));
@@ -488,22 +539,24 @@ void getThreshsFromEEPROM() {
     bot.noTone();
 }
 
-void targetGC(bool seeGC, unsigned int frontVariance) {
+void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight) {
     static unsigned long lastSeenTime = 0;
     unsigned long curtime = micros();
+    int factor = 1;
+    if (!lookRight) factor = -1;
     if (seeGC) {
         lastSeenTime = curtime;
     }
     if (curtime - lastSeenTime > 1500) {
         // We've lost it; turn hard
-        bot.move(0, 120);
+        bot.move(0, factor*120);
     }
     else if (curtime - lastSeenTime > 500) {
         // We've lost it for a bit, turn back but keep moving forward
-        bot.move(100, 60);
+        bot.move(100, factor*60);
     }
     else {
         // We've seen the GC recently, turn slightly and move forward quickly
-        bot.move(200, -30);
+        bot.move(200, -factor*30);
     }
 }

@@ -164,7 +164,11 @@ void MudduinoBot::cache_GCs(int num_cached, int* seeds, int* fb1, int* fb2) {
     }
 }
 
-int MudduinoBot::readGC(lightSensor l, unsigned int* variance, unsigned int* readings) {
+int MudduinoBot::readGC(lightSensor l, unsigned long* variance, unsigned int* readings) {
+    unsigned long ourVariance;
+    if (variance == NULL) variance = &ourVariance;
+    *variance = 0;
+
     unsigned int sum = 0;
     uint8_t lightPin;
     switch(l) {
@@ -187,13 +191,6 @@ int MudduinoBot::readGC(lightSensor l, unsigned int* variance, unsigned int* rea
     }
 
     unsigned int avg = sum/31;
-
-    if (variance != NULL) {
-        for (int i=0; i<31; i++) {
-            int diff = readings[i] - avg;
-            *variance += diff * diff;
-        }
-    }
     
     uint32_t gc = 0;
     for (int i=0; i < 31; i++) {
@@ -201,7 +198,12 @@ int MudduinoBot::readGC(lightSensor l, unsigned int* variance, unsigned int* rea
         //  OR it into the GC backwards, with the first element of the array
         //  going in the 30th position, etc
         gc |= (uint32_t)(readings[30-i] < avg) << i;
+
+        int diff = readings[i] - avg;
+        *variance += diff * diff;
     }
+    
+    if (*variance < 200) return 0;
 
     // Check the gold code against each one of the possibilities
     for (int i=0; i<num_cached_GCs; i++) {
