@@ -168,29 +168,50 @@ void loop() {
     int seedNumFront = bot.readGC(MudduinoBot::FORWARD, &frontVariance);
 
     runEvery(100) {
-        printf("Primary: %d Secondary: %4d rs: %4d rc: %4d Seeds: L:%2d R:%2d C:%2d frontVar: %10ld bump: %d\n",
-            primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance, bot.getBumper());
+        printf("Primary: %d Secondary: %4d rs: %4d rc: %4d Seeds: L:%2d R:%2d C:%2d frontVar: %10ld bump: %d cg: %d sg: %d\n",
+            primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance, bot.getBumper(), centerOnGray(rc), sideOnGray(rs));
     }
 
     
 
     switch(primary_state) {
     case BEELINE:
-            
-        if (timeInState < 1000) {
-            bot.move(255);
+        switch(secondary_state){
+           case 0:
+             bot.move(255);
+             if (timeInState>1000 || (seedNumLeft==1 && side!=0) || (seedNumRight==2 && side!=1)){
+               secondary_state=1;
+               timer=curTime;
+             }
+             if (bot.getBumper()){
+               primary_state=ON_CIRCLE;
+               secondary_state=100;
+             }
+             break;
+           case 1:
+             bot.move(120);
+               if (curTime-timer>500){
+                 secondary_state=2;
+               }
+               
+             if (bot.getBumper() || timeInState > 2000) {
+               primary_state = BEELINE_FIND_CIRCLE;
+               switchTime = curTime;
+               secondary_state = 0;
+             }
+             bot.setServo(servo_in);
+             break;
+           case 2:
+             targetGC(seedNumFront==24, frontVariance, side);
+             
+             if (bot.getBumper() || timeInState > 2000) {
+               primary_state = BEELINE_FIND_CIRCLE;
+               switchTime = curTime;
+               secondary_state = 0;
+             }
+             bot.setServo(servo_in);
+             break;
         }
-        else {
-            targetGC(seedNumFront == 24, frontVariance, side);
-        }
-
-        if (bot.getBumper() || timeInState > 2000) {
-            primary_state = BEELINE_FIND_CIRCLE;
-            switchTime = curTime;
-            secondary_state = 0;
-            //bot.tone(440, 500);
-        }
-        bot.setServo(servo_in);
         break;
 
     case BEELINE_FIND_CIRCLE:
@@ -238,16 +259,6 @@ void loop() {
             if (state != lastState) {
                 lastStateChangeTime = curTime;
             }
-            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
-                secondary_state = 100;
-                lastStateChangeTime = curTime;
-                timer = curTime;
-            }
-            if (bot.getBumper()) {
-                secondary_state = 100;
-                lastStateChangeTime = curTime;
-                timer = curTime;
-            }
             switch (state) {
             case 0: // side is on white
                 bot.move(120, -50);
@@ -290,6 +301,27 @@ void loop() {
                 primary_state=FIND_BOX;
                 secondary_state = 0;
             }
+            
+            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
+                secondary_state = 100;
+                lastStateChangeTime = curTime;
+                timer = curTime;
+            }
+            if (bot.getBumper()) {
+                secondary_state = 100;
+                lastStateChangeTime = curTime;
+                timer = curTime;
+            }
+            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
+                secondary_state = 100;
+                lastStateChangeTime = curTime;
+                timer = curTime;
+            }
+            if (bot.getBumper()) {
+                secondary_state = 100;
+                lastStateChangeTime = curTime;
+                timer = curTime;
+            }
 
             lastState = state;
             break;
@@ -299,13 +331,13 @@ void loop() {
         case 100:
             //bot.tone(880);
             bot.move(-200);
-            if (curTime - timer > 300){
+            if (curTime - timer > 150){
                 timer = curTime;
 
                 if (sideOnWhite(rs) && centerOnWhite(rc)) {
                     secondary_state = 101;
                 }
-                else if (sideOnGray(rs) && centerOnGray(rc)) {
+                else if ((sideOnGray(rs)||sideOnBlack(rs)) && (centerOnBlack(rc) || centerOnGray(rc))) {
                     secondary_state = 102;
                 }
                 else {
@@ -371,8 +403,8 @@ void loop() {
             break;
         }
         case 102: // stuck on gray
-            bot.move(-50, 120);
-            if (curTime - timer > 1000) {
+            bot.move(-20, 160);
+            if (curTime - timer > 300 || sideOnWhite(rs)) {
                 secondary_state = 0;
             }
             break;
