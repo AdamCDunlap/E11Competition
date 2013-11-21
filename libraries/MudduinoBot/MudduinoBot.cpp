@@ -293,7 +293,11 @@ bool MudduinoBot::flash_GC_async(int which, bool inverted) {
     //if (curTime - flashPos.lastTime < 250) return false;
     //flashPos.lastTime = curTime;
 
-    digitalWrite(led_pin, inverted ^ !!(cached_gcs[which] & (1UL << (30 - flashPos.pos))));
+    //digitalWrite(led_pin, inverted ^ !!(cached_gcs[which] & (1UL << (30 - flashPos.pos))));
+    if (inverted ^ !!(cached_gcs[which] & (1UL << (30 - flashPos.pos))))
+        *led_out |= led_bit;
+    else
+        *led_out &= ~led_bit;
     flashPos.pos++;
     if (flashPos.pos >= 32) {
         flashPos.pos = 0;

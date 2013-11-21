@@ -3,9 +3,9 @@
 #include <GoldCode.h>
 #include <Servo.h>
 #include <RunEvery.h>
-#include <TimerOne.h>
 #include <stdinout.h>
 #include <avr/eeprom.h>
+//#include <Tone.h>
 
 MudduinoBot bot;
 
@@ -33,12 +33,16 @@ void getThreshsFromEEPROM();
 void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight);
 
 // This function is called every 250 microseconds by a timer interrupt and keeps the gold codes a'flashin
-void flashMoreGC() {
-    static int i = 0;
-    if(bot.flash_GC_async(i < 3? 6 : 7, !side)) {
-        i = i >= 5? 0 : i+1;
-    }
-}
+//ISR(TIMER2_COMPA_vect) {
+//    static bool go = true;
+//    if (go) {
+//        static int i = 0;
+//        if(bot.flash_GC_async(i < 3? 6 : 7, !side)) {
+//            i = i >= 5? 0 : i+1;
+//        }
+//    }
+//    go = !go;
+//}
 
 void setup() {
     Serial.begin(115200);
@@ -71,8 +75,77 @@ void setup() {
                 thrs.CGW, thrs.SGW, thrs.CBG, thrs.SBG);
     }
 
-    //Timer1.initialize(250);
-    //Timer1.attachInterrupt(flashMoreGC);
+
+	//// on the ATmega168, timer 0 is also used for fast hardware pwm
+	//// (using phase-correct PWM would mean that timer 0 overflowed half as often
+	//// resulting in different millis() behavior on the ATmega8 and ATmega168)
+	//sbi(TCCR0A, WGM01);
+	//sbi(TCCR0A, WGM00);
+
+    //// Set prescale to 64
+	//sbi(TCCR0B, CS01);
+	//sbi(TCCR0B, CS00);
+
+    //
+	//// enable timer 0 overflow interrupt
+	//sbi(TIMSK, TOIE0);
+
+    //
+	//// timers 1 and 2 are used for phase-correct hardware pwm
+	//// this is better for motors as it ensures an even waveform
+	//// note, however, that fast pwm mode can achieve a frequency of up
+	//// 8 MHz (with a 16 MHz clock) at 50% duty cycle
+
+	//TCCR1B = 0;
+
+	//// set timer 1 prescale factor to 64
+	//sbi(TCCR1B, CS11);
+	//sbi(TCCR1B, CS10);
+
+	//// put timer 1 in 8-bit phase correct pwm mode
+	//sbi(TCCR1A, WGM10);
+
+    //
+	//// set timer 2 prescale factor to 64
+	//sbi(TCCR2B, CS22);
+
+
+	//// configure timer 2 for phase correct pwm (8-bit)
+	//sbi(TCCR2A, WGM20);
+
+
+    //cli(); // Disable interrupts
+    //
+
+    // Setup timer interrupt on timer2 to call the ISR every 125 microseconds
+    //cli(); // disable interrupts
+    //TCCR2A = 0;// set entire TCCR2A register to 0
+    //TCCR2B = 0;// same for TCCR2B
+    //TCNT2  = 0;//initialize counter value to 0
+    //// set compare match register for 8khz increments
+    //OCR2A = 124;// = (16*10^6) / (8000*8) - 1 (must be <256)
+    //// turn on CTC mode
+    //TCCR2A |= (1 << WGM21);
+    //// Set CS22 bit for 64 prescaler
+    //TCCR2B |= (1 << CS22);   
+    //// enable timer compare interrupt
+    //TIMSK2 |= (1 << OCIE2A);
+    //sei(); // enable interrupts
+
+    //for (int i=0; i<256; i++) {
+    //    bot.move(i);
+    //    delay(100);
+    //}
+    //for (int i=255; i>-256; i--) {
+    //    bot.move(i);
+    //    delay(100);
+    //}
+    //for (int i=-255; i<0; i++) {
+    //    bot.move(i);
+    //    delay(100);
+    //}
+    //
+    //while(1);
 }
 
 bool wrong_color(int seedNum) {
@@ -115,7 +188,7 @@ void loop() {
             primary_state = BEELINE_FIND_CIRCLE;
             switchTime = curTime;
             secondary_state = 0;
-            bot.tone(440, 500);
+            //bot.tone(440, 500);
         }
         bot.setServo(servo_in);
         break;
@@ -149,7 +222,7 @@ void loop() {
 
 
     case ON_CIRCLE:
-        bot.noTone();
+        //bot.noTone();
         switch(secondary_state) {
         case 0:
         {
@@ -331,7 +404,7 @@ void loop() {
 
 
     case BLACK_LINE_FOLLOW: case FIND_BOX:
-        bot.tone(220);
+        //bot.tone(220);
         switch(secondary_state) {
         case 0:          //find the black line with gc5
         {

@@ -30,8 +30,12 @@ public:
             team_pin(team_in),
             buzzer_pin(buzzer_in),
             led_pin(led_in),
-            bumper_pin(bumper_in)
-    {}
+            bumper_pin(bumper_in),
+            led_out(portOutputRegister(digitalPinToPort(led_pin))),
+            led_bit(digitalPinToBitMask(led_pin))
+            
+    {
+    }
     ~MudduinoBot() {
         //free(cached_gcs);
         //free(cached_gc_seeds);
@@ -107,6 +111,10 @@ public:
 private:
     const uint8_t lplus_pin, lminus_pin, len_pin, rplus_pin, rminus_pin, ren_pin, serv_pin, dist_pin, light_fwd_pin, light_left_pin, light_right_pin, reflect_center_pin, reflect_side_pin, team_pin, buzzer_pin, led_pin, bumper_pin;
     Servo serv;
+
+    // Holds cached values for direct I/O for faster GC flashing
+    volatile uint8_t* led_out;
+    uint8_t led_bit;
 
     struct FlashPos {
         uint8_t pos;
