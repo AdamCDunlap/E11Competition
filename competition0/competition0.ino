@@ -229,13 +229,19 @@ void loop() {
             break;
         case 1:
             bot.move(150, 50);
-            if (rc > thrs.CBG) { // on black
+            /*if (rc > thrs.CBG) { // on black
                 bot.halt();
             }
-            else if (rc > thrs.CGW) { // on grey
+            else*/ if (rc > thrs.CGW) { // on grey
                 primary_state = ON_CIRCLE;
                 switchTime = curTime;
                 secondary_state = 0;
+            }
+            else if (curTime - switchTime > 1000) { // timeout
+                primary_state = ON_CIRCLE;
+                switchTime = curTime;
+                timer = curTime;
+                secondary_state = 100; // start out lost
             }
         }
         break;
@@ -268,13 +274,13 @@ void loop() {
             }
             switch (state) {
             case 0: // side is on white
-                bot.move(120, -50);
+                bot.move(120, -65);
                 break;
             case 1: // center is on grey
-                bot.move(120, 40);
+                bot.move(120, 45);
                 break;
             case 2:
-                bot.move(120, -16);
+                bot.move(120, -17);
                 break;
             }
             bot.setServo(servo_in);
@@ -309,16 +315,6 @@ void loop() {
                 secondary_state = 0;
             }
             
-            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
-                secondary_state = 100;
-                lastStateChangeTime = curTime;
-                timer = curTime;
-            }
-            if (bot.getBumper()) {
-                secondary_state = 100;
-                lastStateChangeTime = curTime;
-                timer = curTime;
-            }
             if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
                 secondary_state = 100;
                 lastStateChangeTime = curTime;
@@ -390,9 +386,10 @@ void loop() {
                     }
 
                     if (sideOnGray(rs)) {
-                        white_state = 0;
-                        secondary_state = 0;
-                        switchTime = curTime;
+                        white_state = 2;
+                        timer = curTime;
+                        //secondary_state = 0;
+                        //switchTime = curTime;
                     }
 
                     if((curTime-noGCtime)>500){
@@ -400,23 +397,33 @@ void loop() {
                     }
                     break;
                 case 2:
-                    bot.move(0,70);
-                    if ((curTime - turnTime)>400){
-                        secondary_state=0;
+                    bot.move(-70);
+                    if(curTime - timer > 75) {
                         white_state = 0;
+                        secondary_state = 102;
+                        timer = curTime;
                     }
                     break;
                }
             break;
         }
         case 102: // stuck on gray
-            bot.move(-20, 120);
-            if (curTime - timer > 300 || centerOnWhite(rc)) {
+            bot.move(-10, 90);
+            if (curTime - timer > 2000 || centerOnWhite(rc)) {
+                timer = curTime;
+                secondary_state = 103;
+                bot.tone(440, 100);
+            }
+            break;
+        case 103:
+            bot.move(0, -110);
+            if (curTime - timer > 100) {
                 secondary_state = 0;
+                timer = curTime;
             }
             break;
             
-        case 1:
+        case 1: // See a wrong beakon
             //bot.move(-200);
             timer = curTime;
             secondary_state = 2;
