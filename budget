@@ -1,0 +1,7 @@
+base robot
+3x$2 motors
+2x$3 phototransistors
+shapelock
+1x$3 reflectivity sensor
+1x$1 LED
+3x$2 microswitches

@@ -56,6 +56,7 @@ void MudduinoBot::turnR() {
     digitalWrite(rminus_pin, HIGH);
 }
 void MudduinoBot::move(int fwd, int turn) {
+    turn += 10;
     int leftPow = fwd + turn;
     int rightPow = fwd - turn;
     leftPow = constrain(leftPow, -255, 255);
@@ -233,7 +234,10 @@ bool MudduinoBot::readGC_async(uint32_t* GC_ret, lightSensor l, LightVals** vals
         case LEFT: lightPin = light_left_pin; break;
         case RIGHT: lightPin = light_right_pin; break;
         case FORWARD: lightPin = light_fwd_pin; break;
-        default: lightPin = -1; Serial.println("readGC_async called with unknown light sensor"); return false;
+        default:
+            lightPin = -1;
+            Serial.println("readGC_async called with unknown light sensor");
+            return false;
     }
     lightVals[l].vals[lightVals[l].pos] = analogRead(lightPin);
     lightVals[l].pos++;

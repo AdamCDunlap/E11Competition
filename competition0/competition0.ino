@@ -5,7 +5,7 @@
 #include <RunEvery.h>
 #include <stdinout.h>
 #include <avr/eeprom.h>
-//#include <Tone.h>
+#include <MemoryFree.h>
 
 MudduinoBot bot;
 
@@ -48,6 +48,10 @@ void setup() {
     Serial.begin(115200);
     bot.begin();
 
+    //bot.move(200);
+
+    //while(1);
+
     //bot.setServo(servo_in);
     //delay(1000);
     //bot.setServo(servo_out);
@@ -75,6 +79,8 @@ void setup() {
                 thrs.CGW, thrs.SGW, thrs.CBG, thrs.SBG);
     }
 
+    //Serial.print("freeMemory()=");
+    //Serial.println(freeMemory());
 
 	//// on the ATmega168, timer 0 is also used for fast hardware pwm
 	//// (using phase-correct PWM would mean that timer 0 overflowed half as often
@@ -177,40 +183,41 @@ void loop() {
     switch(primary_state) {
     case BEELINE:
         switch(secondary_state){
-           case 0:
-             bot.move(255);
-             if (timeInState>1000 || (seedNumLeft==1 && side!=0) || (seedNumRight==2 && side!=1)){
+        case 0:
+            bot.move(200);
+            if (timeInState>1000 || (seedNumLeft==1 && side==1) || (seedNumRight==2 && side==0)){
                secondary_state=1;
                timer=curTime;
-             }
-             if (bot.getBumper()){
+            }
+            if (bot.getBumper()){
+               switchTime = curTime;
                primary_state=ON_CIRCLE;
                secondary_state=100;
-             }
-             break;
-           case 1:
-             bot.move(120);
-               if (curTime-timer>500){
-                 secondary_state=2;
-               }
-               
-             if (bot.getBumper() || timeInState > 2000) {
-               primary_state = BEELINE_FIND_CIRCLE;
-               switchTime = curTime;
-               secondary_state = 0;
-             }
-             bot.setServo(servo_in);
-             break;
-           case 2:
-             targetGC(seedNumFront==24, frontVariance, side);
-             
-             if (bot.getBumper() || timeInState > 2000) {
-               primary_state = BEELINE_FIND_CIRCLE;
-               switchTime = curTime;
-               secondary_state = 0;
-             }
-             bot.setServo(servo_in);
-             break;
+            }
+            break;
+        case 1:
+            bot.move(120);
+            if (curTime-timer>500){
+                secondary_state=2;
+            }
+
+            if (bot.getBumper() || timeInState > 2000) {
+                primary_state = BEELINE_FIND_CIRCLE;
+                switchTime = curTime;
+                secondary_state = 0;
+            }
+            bot.setServo(servo_in);
+            break;
+        case 2:
+            targetGC(seedNumFront==24, frontVariance, side);
+            
+            if (bot.getBumper() || timeInState > 2000) {
+                primary_state = BEELINE_FIND_CIRCLE;
+                switchTime = curTime;
+                secondary_state = 0;
+            }
+            bot.setServo(servo_in);
+            break;
         }
         break;
 
@@ -264,7 +271,7 @@ void loop() {
                 bot.move(120, -50);
                 break;
             case 1: // center is on grey
-                bot.move(120, 10);
+                bot.move(120, 40);
                 break;
             case 2:
                 bot.move(120, -16);
@@ -403,8 +410,8 @@ void loop() {
             break;
         }
         case 102: // stuck on gray
-            bot.move(-20, 160);
-            if (curTime - timer > 300 || sideOnWhite(rs)) {
+            bot.move(-20, 120);
+            if (curTime - timer > 300 || centerOnWhite(rc)) {
                 secondary_state = 0;
             }
             break;
