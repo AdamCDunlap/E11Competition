@@ -6,6 +6,7 @@
 #include <stdinout.h>
 #include <avr/eeprom.h>
 #include <MemoryFree.h>
+#include <TimerOne.h>
 
 MudduinoBot bot;
 
@@ -29,7 +30,7 @@ bool centerOnGray(int rc) { return rc > thrs.CGW && rc < thrs.CBG; }
 bool sideOnGray(int rs) { return rs > thrs.SGW && rs < thrs.SBG; }
 bool sideOnBlack(int rs) { return rs > thrs.SBG; }
 bool centerOnBlack(int rc) { return rc > thrs.CBG; }
-void getThreshsFromEEPROM();
+void setEEPROMThreshs();
 void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight);
 
 // This function is called every 250 microseconds by a timer interrupt and keeps the gold codes a'flashin
@@ -43,6 +44,15 @@ void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight);
 //    }
 //    go = !go;
 //}
+
+// Flash GCs of 7 and 8 continuously, 3 at a time
+// Should be called by interrupt every 250 microseconds
+void flashMoreGC() {
+    static int i = 0;
+    if(bot.flash_GC_async(i < 3? 6 : 7, !side)) {
+        i = i >= 5? 0 : i+1;
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -70,7 +80,7 @@ void setup() {
     side = bot.getTeam();
 
     if (!side && bot.getBumper()) {
-        getThreshsFromEEPROM();
+        setEEPROMThreshs();
         while(true) ;
     }
     else {
@@ -152,6 +162,13 @@ void setup() {
     //}
     //
     //while(1);
+
+    bot.serv.detach();
+
+    pinMode(10, OUTPUT);
+    digitalWrite(10, LOW);
+    Timer1.initialize(250);
+    Timer1.attachInterrupt(flashMoreGC);
 }
 
 bool wrong_color(int seedNum) {
@@ -163,6 +180,7 @@ void loop() {
     static uint8_t secondary_state;
     static unsigned long switchTime = 0;
     static unsigned long timer = 0;
+    static unsigned long servoTime = 0;
     unsigned long curTime = millis();
     unsigned long timeInState = curTime - switchTime;
     int rs = bot.getSideReflect();
@@ -184,7 +202,7 @@ void loop() {
 
     switch(primary_state) {
     case BEELINE:
-        bot.setServo(servo_in);
+        //bot.setServo(servo_in);
         switch(secondary_state){
         case 0:
             bot.move(200, 20);
@@ -302,7 +320,7 @@ void loop() {
             //    bot.move(120, -17);
             //    break;
             //}
-            bot.setServo(servo_in);
+            //bot.setServo(servo_in);
 
             switch(seedNumLeft){
                 case 1:
@@ -324,6 +342,7 @@ void loop() {
                 bot.halt();
                 secondary_state = 10;
                 timer = curTime;
+                bot.serv.attach(10);
             }
            
             //if (wrong_color(seedNumRight) && abs(seedNumRight)==6) {
@@ -346,6 +365,15 @@ void loop() {
                 lastStateChangeTime = curTime;
                 timer = curTime;
             }
+
+            if (curTime - servoTime > 750) {
+                bot.serv.detach();
+                servoTime = curTime + 99999999;
+                digitalWrite(10, LOW);
+                Timer1.initialize(250);
+                Timer1.attachInterrupt(flashMoreGC);
+            }
+
 
             lastState = state;
             break;
@@ -448,6 +476,7 @@ void loop() {
             if (curTime - timer > 500) {
                 timer = curTime;
                 secondary_state = 0;
+                servoTime = curTime;
             }
             break;
         }
@@ -559,7 +588,7 @@ void loop() {
         // This is  for box
         case 13: //has hit the beacon--turning
         {
-            bot.move(0,-900);
+            bot.move(0,-90);
             if (seedNumFront == 7) {
                 secondary_state=14;
             }
@@ -594,7 +623,7 @@ void loop() {
     }
 }
 
-void getThreshsFromEEPROM() {
+void setEEPROMThreshs() {
     // Start reading values into EEPROM
     // Play some tones so we know we're in this mode
     bot.tone(880);
