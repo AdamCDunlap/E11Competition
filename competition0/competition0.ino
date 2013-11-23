@@ -178,13 +178,16 @@ void loop() {
             primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance, bot.getBumper(), centerOnGray(rc), sideOnGray(rs));
     }
 
+    //if (sideOnGray(rs)) bot.tone(200);
+    //else bot.noTone();
     
 
     switch(primary_state) {
     case BEELINE:
+        bot.setServo(servo_in);
         switch(secondary_state){
         case 0:
-            bot.move(200);
+            bot.move(200, 20);
             if (timeInState>1000 || (seedNumLeft==1 && side==1) || (seedNumRight==2 && side==0)){
                secondary_state=1;
                timer=curTime;
@@ -197,26 +200,24 @@ void loop() {
             break;
         case 1:
             bot.move(120);
-            if (curTime-timer>500){
+            if (curTime-timer>200){
                 secondary_state=2;
             }
 
-            if (bot.getBumper() || timeInState > 2000) {
+            if (bot.getBumper() || timeInState > 3000) {
                 primary_state = BEELINE_FIND_CIRCLE;
                 switchTime = curTime;
                 secondary_state = 0;
             }
-            bot.setServo(servo_in);
             break;
         case 2:
             targetGC(seedNumFront==24, frontVariance, side);
             
-            if (bot.getBumper() || timeInState > 2000) {
+            if (bot.getBumper() || timeInState > 5000) {
                 primary_state = BEELINE_FIND_CIRCLE;
                 switchTime = curTime;
                 secondary_state = 0;
             }
-            bot.setServo(servo_in);
             break;
         }
         break;
@@ -266,56 +267,76 @@ void loop() {
             static unsigned long lastStateChangeTime = 0;
 
             if (sideOnWhite(rs))        state = 0;
-            else if (centerOnGray(rc))  state = 1;
+            else if (centerOnBlack(rc)) state = 1;
             else                        state = 2;
+            //state = sideOnGray(rs);
 
             if (state != lastState) {
                 lastStateChangeTime = curTime;
             }
+            //if (state) {
+            //    bot.move(80, 20);
+            //}
+            //else {
+            //    bot.move(80, -50);
+            //}
             switch (state) {
             case 0: // side is on white
-                bot.move(120, -65);
+                bot.move(100, -50);
                 break;
-            case 1: // center is on grey
-                bot.move(120, 45);
+            case 1: // we're near black line
+                bot.move(100, -12);
                 break;
             case 2:
-                bot.move(120, -17);
+                bot.move(100, 20);
                 break;
             }
+            //switch (state) {
+            //case 0: // side is on white
+            //    bot.move(120, -65);
+            //    break;
+            //case 1: // center is on grey
+            //    bot.move(120, 45);
+            //    break;
+            //case 2:
+            //    bot.move(120, -17);
+            //    break;
+            //}
             bot.setServo(servo_in);
 
-            switch(seedNumLeft){   //START PATRICK MOD
-                case 0:
+            switch(seedNumLeft){
+                case 1:
                     location=45;
                     break;
-                case 1:
+                case 2:
                     location=135;
                     break;
-                case 2:
+                case 3:
                     location=225;
                     break;
-                case 3:
+                case 4:
                     location=315;
                     break;
-            }  //END PATRICK MOD
+                default:
+                    break;
+            }
             if (wrong_color(seedNumLeft) && abs(seedNumLeft) < 5 && curTime - timer > 500) {
                 bot.halt();
-                secondary_state = 1;
+                secondary_state = 10;
                 timer = curTime;
             }
            
-            if (wrong_color(seedNumRight) && abs(seedNumRight)==6) {
-                primary_state = BLACK_LINE_FOLLOW;
-                secondary_state = 0;
-            }
+            //if (wrong_color(seedNumRight) && abs(seedNumRight)==6) {
+            //    primary_state = BLACK_LINE_FOLLOW;
+            //    secondary_state = 0;
+            //}
            
             if (curTime > 90000 && wrong_color(seedNumRight) && abs(seedNumRight) == 5) {
                 primary_state=FIND_BOX;
                 secondary_state = 0;
             }
             
-            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a while
+            if (curTime - lastStateChangeTime > 3000) { // We've been in one state for a while
                 secondary_state = 100;
                 lastStateChangeTime = curTime;
                 timer = curTime;
@@ -412,7 +433,6 @@ void loop() {
             if (curTime - timer > 2000 || centerOnWhite(rc)) {
                 timer = curTime;
                 secondary_state = 103;
-                bot.tone(440, 100);
             }
             break;
         case 103:
@@ -423,19 +443,9 @@ void loop() {
             }
             break;
             
-        case 1: // See a wrong beakon
-            //bot.move(-200);
-            timer = curTime;
-            secondary_state = 2;
-            break;
-        case 2:
-            //if (curTime - timer > 100) {
-                secondary_state = 3;
-            //}
-            break;
-        case 3:
+        case 10:
             bot.setServo(servo_out);
-            if (curTime - timer > 1000) {
+            if (curTime - timer > 500) {
                 timer = curTime;
                 secondary_state = 0;
             }
