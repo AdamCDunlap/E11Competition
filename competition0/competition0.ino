@@ -32,6 +32,7 @@ bool sideOnBlack(int rs) { return rs > thrs.SBG; }
 bool centerOnBlack(int rc) { return rc > thrs.CBG; }
 void setEEPROMThreshs();
 void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight);
+void lineFollowCircle(int state);
 
 // This function is called every 250 microseconds by a timer interrupt and keeps the gold codes a'flashin
 //ISR(TIMER2_COMPA_vect) {
@@ -222,7 +223,7 @@ void loop() {
                 secondary_state=2;
             }
 
-            if (bot.getBumper() || timeInState > 3000) {
+            if (bot.getBumper() || timeInState > 1500) {
                 primary_state = BEELINE_FIND_CIRCLE;
                 switchTime = curTime;
                 secondary_state = 0;
@@ -292,35 +293,8 @@ void loop() {
             if (state != lastState) {
                 lastStateChangeTime = curTime;
             }
-            //if (state) {
-            //    bot.move(80, 20);
-            //}
-            //else {
-            //    bot.move(80, -50);
-            //}
-            switch (state) {
-            case 0: // side is on white
-                bot.move(100, -50);
-                break;
-            case 1: // we're near black line
-                bot.move(100, -12);
-                break;
-            case 2:
-                bot.move(100, 20);
-                break;
-            }
-            //switch (state) {
-            //case 0: // side is on white
-            //    bot.move(120, -65);
-            //    break;
-            //case 1: // center is on grey
-            //    bot.move(120, 45);
-            //    break;
-            //case 2:
-            //    bot.move(120, -17);
-            //    break;
-            //}
-            //bot.setServo(servo_in);
+
+            lineFollowCircle(state);
 
             switch(seedNumLeft){
                 case 1:
@@ -339,7 +313,7 @@ void loop() {
                     break;
             }
            
-            if (wrong_color(seedNumRight) && abs(seedNumRight)==6) {
+            if (wrong_color(seedNumRight) && abs(seedNumRight)>=5) {
                 primary_state = BLACK_LINE_FOLLOW;
                 secondary_state = 0;
                 bot.tone(440, 2000);
@@ -464,7 +438,7 @@ void loop() {
             }
             break;
         case 103:
-            bot.move(0, -110);
+            bot.move(0, 120);
             if (curTime - timer > 100) {
                 secondary_state = 0;
                 timer = curTime;
@@ -491,136 +465,157 @@ void loop() {
 
 
     case BLACK_LINE_FOLLOW: case FIND_BOX:
-        //bot.tone(220);
         switch(secondary_state) {
-        case 0:          //find the black line with gc5
-        {
-            bot.move(0,100);
-            if ((primary_state == BLACK_LINE_FOLLOW && seedNumFront == 5) || (primary_state == FIND_BOX && seedNumFront == 6) ) {
-                secondary_state=1;
+        case 0:
+            bot.move(0, -110);
+            if (timeInState > 1000) {
+                primary_state = ON_CIRCLE;
+                switchTime = curTime;
             }
-        }
-        case 1:  //drive until black line is found
-        {
-            bot.move(120,0);
-            if (sideOnBlack(rs) || centerOnBlack(rc)){
-                secondary_state=2;
+            if (abs(seedNumFront) >= 5) {
+                secondary_state = 1;
             }
-        }
-        case 2: case 6:
-        {
-            // follow blackline
-            static int lastState = 0;
-            int rs = bot.getSideReflect();
-            int rc = bot.getCenterReflect();
-            int state;
-            static unsigned long lastStateChangeTime = 0;
-            if (rs > thrs.SGW) state = 0;  //using grey-white threshold for stronger contrast
-            else if (rc < thrs.CGW) state = 1;
-            else state = 2;
-            if (state != lastState) {
-                lastStateChangeTime = curTime;
-            }
-            if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a second
+            break;
+        case 1:
+            targetGC(wrong_color(seedNumFront) && abs(seedNumFront) >= 5, 0, false);
+            if(bot.getBumper()) {
+                // We hit something! Go to circle's lost because why not
+                primary_state = ON_CIRCLE;
                 secondary_state = 100;
-                lastStateChangeTime = curTime;
-                timer = curTime;
-            }
-            switch (state) {
-            case 0: // side is on black--turn left
-                bot.move(120, -70);
-                break;
-            case 1: // center is on white--turn right
-                bot.move(120, 50);
-                break;
-            case 2:
-                bot.move(120, 0);  //center on black, side on white--go straight
-                break;
-            }
-            bot.setServo(servo_in);
-
-            if (secondary_state == 2 && bot.getBumper()){
-                if ((side && seedNumFront == -6) || (!side && seedNumFront == 6 )) {
-                    secondary_state = 3; // Diverge to black line code
-                    timer = curTime;
-                }
-                if ((side && seedNumFront == -5) || (!side && seedNumFront == 5 )) {
-                    secondary_state = 13; // Diverge to box code
-                }
-            }
-            if (secondary_state == 6 && centerOnGray(rc) && sideOnGray(rs)) {
-                secondary_state = 7;
-                timer = curTime;
-            }              
-           
-            lastState = state;
-            break;
-        }
-        case 3:
-            bot.move(-100);
-            if (curTime - timer >= 100) {
-                secondary_state = 4;
-                timer = curTime;
-            }
-            break;
-        case 4:
-            bot.move(0, 130);
-            if (curTime-timer>=150){
-              secondary_state =5;
-              timer=curTime;
-            }
-            break;
-        case 5:
-            bot.move(0,100);
-            if (centerOnBlack(rc)){
-                secondary_state=6; // above
-                timer=curTime;
-            }
-          break;
-        case 7:
-            bot.move(75, 120);
-            if (sideOnWhite(rs)) {
-              primary_state = ON_CIRCLE;
-              secondary_state = 0;
-              timer = curTime;
-            }
-            break;
-
-
-        // This is  for box
-        case 13: //has hit the beacon--turning
-        {
-            bot.move(0,-90);
-            if (seedNumFront == 7) {
-                secondary_state=14;
             }
             break;
         }
-        case 14:  //has acquired gc7, drives forward
-            bot.move(120,0);
-            if(((rs<thrs.SGW)&&(rs>200))||((rc<thrs.CGW)&&(rc>200))){
-                secondary_state=15;
-              }
-            break;
-        case 15: //has passed yellow once, slows down
-            bot.move(90,0);
-            if(((rs<thrs.SGW)&&(rs>200))||((rc<thrs.CGW)&&(rc>200))){
-                secondary_state=16;
-               }
-            break;
-        case 16: //has passed yellow twice, stops
-            bot.halt();
-            break;
+        break;
+        ////bot.tone(220);
+        //switch(secondary_state) {
+        //case 0:          //find the black line with gc5
+        //{
+        //    bot.move(0,100);
+        //    if ((primary_state == BLACK_LINE_FOLLOW && seedNumFront == 5) || (primary_state == FIND_BOX && seedNumFront == 6) ) {
+        //        secondary_state=1;
+        //    }
+        //}
+        //case 1:  //drive until black line is found
+        //{
+        //    bot.move(120,0);
+        //    if (sideOnBlack(rs) || centerOnBlack(rc)){
+        //        secondary_state=2;
+        //    }
+        //}
+        //case 2: case 6:
+        //{
+        //    // follow blackline
+        //    static int lastState = 0;
+        //    int rs = bot.getSideReflect();
+        //    int rc = bot.getCenterReflect();
+        //    int state;
+        //    static unsigned long lastStateChangeTime = 0;
+        //    if (rs > thrs.SGW) state = 0;  //using grey-white threshold for stronger contrast
+        //    else if (rc < thrs.CGW) state = 1;
+        //    else state = 2;
+        //    if (state != lastState) {
+        //        lastStateChangeTime = curTime;
+        //    }
+        //    if (curTime - lastStateChangeTime > 2000) { // We've been in one state for a second
+        //        secondary_state = 100;
+        //        lastStateChangeTime = curTime;
+        //        timer = curTime;
+        //    }
+        //    switch (state) {
+        //    case 0: // side is on black--turn left
+        //        bot.move(120, -70);
+        //        break;
+        //    case 1: // center is on white--turn right
+        //        bot.move(120, 50);
+        //        break;
+        //    case 2:
+        //        bot.move(120, 0);  //center on black, side on white--go straight
+        //        break;
+        //    }
+        //    bot.setServo(servo_in);
 
-        case 100: // Probably stuck, back up
-            bot.move(-200);
-            if (curTime - timer > 500){
-                secondary_state = 0;
-                timer = curTime;
-            }
-            break;
-        }
-        break;  //END PATRICK MOD
+        //    if (secondary_state == 2 && bot.getBumper()){
+        //        if ((side && seedNumFront == -6) || (!side && seedNumFront == 6 )) {
+        //            secondary_state = 3; // Diverge to black line code
+        //            timer = curTime;
+        //        }
+        //        if ((side && seedNumFront == -5) || (!side && seedNumFront == 5 )) {
+        //            secondary_state = 13; // Diverge to box code
+        //        }
+        //    }
+        //    if (secondary_state == 6 && centerOnGray(rc) && sideOnGray(rs)) {
+        //        secondary_state = 7;
+        //        timer = curTime;
+        //    }              
+        //   
+        //    lastState = state;
+        //    break;
+        //}
+        //case 3:
+        //    bot.move(-100);
+        //    if (curTime - timer >= 100) {
+        //        secondary_state = 4;
+        //        timer = curTime;
+        //    }
+        //    break;
+        //case 4:
+        //    bot.move(0, 130);
+        //    if (curTime-timer>=150){
+        //      secondary_state =5;
+        //      timer=curTime;
+        //    }
+        //    break;
+        //case 5:
+        //    bot.move(0,100);
+        //    if (centerOnBlack(rc)){
+        //        secondary_state=6; // above
+        //        timer=curTime;
+        //    }
+        //  break;
+        //case 7:
+        //    bot.move(75, 120);
+        //    if (sideOnWhite(rs)) {
+        //      primary_state = ON_CIRCLE;
+        //      secondary_state = 0;
+        //      timer = curTime;
+        //    }
+        //    break;
+
+
+        //// This is  for box
+        //case 13: //has hit the beacon--turning
+        //{
+        //    bot.move(0,-90);
+        //    if (seedNumFront == 7) {
+        //        secondary_state=14;
+        //    }
+        //    break;
+        //}
+        //case 14:  //has acquired gc7, drives forward
+        //    bot.move(120,0);
+        //    if(((rs<thrs.SGW)&&(rs>200))||((rc<thrs.CGW)&&(rc>200))){
+        //        secondary_state=15;
+        //      }
+        //    break;
+        //case 15: //has passed yellow once, slows down
+        //    bot.move(90,0);
+        //    if(((rs<thrs.SGW)&&(rs>200))||((rc<thrs.CGW)&&(rc>200))){
+        //        secondary_state=16;
+        //       }
+        //    break;
+        //case 16: //has passed yellow twice, stops
+        //    bot.halt();
+        //    break;
+
+        //case 100: // Probably stuck, back up
+        //    bot.move(-200);
+        //    if (curTime - timer > 500){
+        //        secondary_state = 0;
+        //        timer = curTime;
+        //    }
+        //    break;
+        //}
+        //break;  //END PATRICK MOD
    
     }
 }
@@ -721,5 +716,21 @@ void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight) {
     else {
         // We've seen the GC recently, turn slightly and move forward quickly
         bot.move(200, -factor*30);
+    }
+}
+
+
+
+void lineFollowCircle(int state) {
+    switch (state) {
+    case 0: // side is on white
+        bot.move(100, -50);
+        break;
+    case 1: // we're near black line
+        bot.move(100, -12);
+        break;
+    case 2:
+        bot.move(100, 20);
+        break;
     }
 }
