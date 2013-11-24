@@ -338,17 +338,12 @@ void loop() {
                 default:
                     break;
             }
-            if (wrong_color(seedNumLeft) && abs(seedNumLeft) < 5 && curTime - timer > 500) {
-                bot.halt();
-                secondary_state = 10;
-                timer = curTime;
-                bot.serv.attach(10);
-            }
            
-            //if (wrong_color(seedNumRight) && abs(seedNumRight)==6) {
-            //    primary_state = BLACK_LINE_FOLLOW;
-            //    secondary_state = 0;
-            //}
+            if (wrong_color(seedNumRight) && abs(seedNumRight)==6) {
+                primary_state = BLACK_LINE_FOLLOW;
+                secondary_state = 0;
+                bot.tone(440, 2000);
+            }
            
             if (curTime > 90000 && wrong_color(seedNumRight) && abs(seedNumRight) == 5) {
                 primary_state=FIND_BOX;
@@ -365,10 +360,15 @@ void loop() {
                 lastStateChangeTime = curTime;
                 timer = curTime;
             }
-
-            if (curTime - servoTime > 750) {
+                    
+            if (wrong_color(seedNumLeft) && abs(seedNumLeft) < 5 && curTime - timer > 500) {
+                bot.halt();
+                secondary_state = 10;
+                timer = curTime;
+                bot.serv.attach(10);
+            }
+            else if (curTime - servoTime > 750 && bot.serv.attached()) {
                 bot.serv.detach();
-                servoTime = curTime + 99999999;
                 digitalWrite(10, LOW);
                 Timer1.initialize(250);
                 Timer1.attachInterrupt(flashMoreGC);
@@ -472,8 +472,10 @@ void loop() {
             break;
             
         case 10:
+            bot.serv.attach(10);
             bot.setServo(servo_out);
             if (curTime - timer > 500) {
+                bot.setServo(servo_in);
                 timer = curTime;
                 secondary_state = 0;
                 servoTime = curTime;
@@ -646,6 +648,7 @@ void setEEPROMThreshs() {
     bot.noTone();
     centerwhiteval = (centerwhiteval + bot.getCenterReflect())/2;
     sidewhiteval = (sidewhiteval + bot.getSideReflect())/2;
+    printf("Got values centerwhite = %4d sidewhite = %4d\n", centerwhiteval, sidewhiteval);
     
     bot.tone(880, 500);
     Serial.println("Position over gray and press bumper");
@@ -659,6 +662,7 @@ void setEEPROMThreshs() {
     bot.noTone();
     centergrayval = (centergrayval + bot.getCenterReflect())/2;
     sidegrayval = (sidegrayval + bot.getSideReflect())/2;
+    printf("Got values centergray = %4d sidegray = %4d\n", centergrayval, sidegrayval);
     
     bot.tone(880, 500);
     Serial.println("Position over black and press bumper");
@@ -672,6 +676,7 @@ void setEEPROMThreshs() {
     bot.noTone();
     centerblackval = (centerblackval + bot.getCenterReflect())/2;
     sideblackval = (sideblackval + bot.getSideReflect())/2;
+    printf("Got values centerblack = %4d sideblack = %4d\n", centerblackval, sideblackval);
 
     thrs.CGW = (centergrayval + centerwhiteval)/2;
     thrs.SGW = (sidegrayval + sidewhiteval)/2;
