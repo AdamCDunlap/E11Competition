@@ -164,12 +164,12 @@ void setup() {
     //
     //while(1);
 
-    bot.serv.detach();
+    //bot.serv.detach();
 
     pinMode(10, OUTPUT);
-    digitalWrite(10, LOW);
-    Timer1.initialize(250);
-    Timer1.attachInterrupt(flashMoreGC);
+    //digitalWrite(10, LOW);
+    //Timer1.initialize(250);
+    //Timer1.attachInterrupt(flashMoreGC);
 }
 
 bool wrong_color(int seedNum) {
@@ -334,14 +334,14 @@ void loop() {
                 bot.halt();
                 secondary_state = 10;
                 timer = curTime;
-                bot.serv.attach(10);
+                //bot.serv.attach(10);
             }
-            else if (curTime - servoTime > 750 && bot.serv.attached()) {
-                bot.serv.detach();
-                digitalWrite(10, LOW);
-                Timer1.initialize(250);
-                Timer1.attachInterrupt(flashMoreGC);
-            }
+            //else if (curTime - servoTime > 750 && bot.serv.attached()) {
+            //    bot.serv.detach();
+            //    digitalWrite(10, LOW);
+            //    Timer1.initialize(250);
+            //    Timer1.attachInterrupt(flashMoreGC);
+            //}
 
 
             lastState = state;
@@ -379,7 +379,7 @@ void loop() {
             static unsigned long turnTime;
             switch(white_state){
             case 0:
-                bot.move(0, 115);
+                bot.move(0, 90);
                 if (abs(seedNumFront)<5 && seedNumFront != 0){
                     noGCtime=curTime;
                     white_state=1;
@@ -440,7 +440,7 @@ void loop() {
             }
             break;
         case 103:
-            bot.move(0, 120);
+            bot.move(0, -120);
             if (curTime - timer > 100) {
                 secondary_state = 0;
                 timer = curTime;
@@ -448,7 +448,7 @@ void loop() {
             break;
             
         case 10:
-            bot.serv.attach(10);
+            //bot.serv.attach(10);
             bot.setServo(servo_out);
             if (curTime - timer > 500) {
                 bot.setServo(servo_in);
@@ -494,6 +494,13 @@ void loop() {
         case 0:
             lastSeenTime = curTime;
             secondary_state = 1;
+        
+            if (abs(target_gc) == 7 || abs(target_gc) == 8) {
+                bot.serv.detach();
+                digitalWrite(10, LOW);
+                Timer1.initialize(250);
+                Timer1.attachInterrupt(flashMoreGC);
+            }
         case 1:
         {
             targetGC(seeGC, 0, true);
@@ -501,13 +508,18 @@ void loop() {
                 lastSeenTime = curTime;
             }
         
-            if(bot.getBumper() || curTime - lastSeenTime > 5000
+            if(bot.getBumper() || curTime - lastSeenTime > 3000
                 || seedNumFront == -target_gc
                 || seedNumRight == -target_gc
                 || seedNumLeft  == -target_gc) {
                 // We hit something or we lost the GC. Go to circle's lost
                 primary_state = ON_CIRCLE;
                 secondary_state = 100;
+                if (abs(target_gc == 7) || abs(target_gc == 8)) {
+                    // reenable the servo
+                    bot.serv.attach(10);
+                }
+                bot.tone(880, 500);
             }
             break;
         }
