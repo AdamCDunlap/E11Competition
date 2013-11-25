@@ -58,6 +58,7 @@ void flashMoreGC() {
 void setup() {
     Serial.begin(115200);
     bot.begin();
+    pinMode(5, OUTPUT);
 
     //bot.move(200);
 
@@ -194,9 +195,12 @@ void loop() {
     int seedNumFront = bot.readGC(MudduinoBot::FORWARD, &frontVariance);
 
     runEvery(100) {
-        printf("Primary: %d Secondary: %4d rs: %4d rc: %4d Seeds: L:%2d R:%2d C:%2d frontVar: %10ld bump: %d cg: %d sg: %d\n",
-            primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance, bot.getBumper(), centerOnGray(rc), sideOnGray(rs));
+        printf("Primary: %d Secondary: %4d rs: %4d rc: %4d Seeds: L:%2d R:%2d C:%2d frontVar: %10ld targ: %d\n",
+            primary_state, secondary_state, rs, rc, seedNumLeft, seedNumRight, seedNumFront, frontVariance, target_gc);
     }
+    digitalWrite(5, wrong_color(seedNumLeft) || wrong_color(seedNumRight) || wrong_color(seedNumLeft));
+
+    //targetGC(seedNumFront == 5, 0, true);
 
     //if (sideOnGray(rs)) bot.tone(200);
     //else bot.noTone();
@@ -209,13 +213,14 @@ void loop() {
         case 0:
             bot.move(200, 20);
             if (timeInState>1000 || (seedNumLeft==1 && side==1) || (seedNumRight==2 && side==0)){
-               secondary_state=1;
-               timer=curTime;
+                secondary_state=1;
+                timer=curTime;
             }
             if (bot.getBumper()){
-               switchTime = curTime;
-               primary_state=ON_CIRCLE;
-               secondary_state=100;
+                switchTime = curTime;
+                primary_state=ON_CIRCLE;
+                secondary_state=100;
+                timer = curTime;
             }
             break;
         case 1:
@@ -314,10 +319,10 @@ void loop() {
                     break;
             }
            
-            if (curTime > 90000 && wrong_color(seedNumRight) && abs(seedNumRight) == 5) {
-                primary_state=FIND_BOX;
-                secondary_state = 0;
-            }
+            //if (curTime > 90000 && wrong_color(seedNumRight) && abs(seedNumRight) == 5) {
+            //    primary_state=FIND_BOX;
+            //    secondary_state = 0;
+            //}
             
             if (curTime - lastStateChangeTime > 3000) { // We've been in one state for a while
                 secondary_state = 100;
@@ -379,56 +384,76 @@ void loop() {
             static unsigned long turnTime;
             switch(white_state){
             case 0:
+                bot.move(-120);
+                if (curTime - timer > 400) {
+                    white_state = 1;
+                    timer = curTime;
+                }
+                break;
+            case 1:
                 bot.move(0, 90);
                 if (abs(seedNumFront)<5 && seedNumFront != 0){
                     noGCtime=curTime;
-                    white_state=1;
+                    white_state=2;
                 }
 
                 if (sideOnGray(rs)) {
-                    white_state = 0;
+                    white_state = 1;
                     secondary_state = 100;
                     switchTime = curTime;
                 }
 
                 if (curTime - timer > 3000) {
-                    white_state = 3;
+                    white_state = 0;
                     timer = curTime;
                 }
             
                 break;
-            case 1:
+            case 2:
                 bot.move(120,0);
                 if (abs(seedNumFront)!=0){
                     noGCtime=curTime;
                 }
+            //case 0:
+            //    bot.move(-120);
+            //    if(curTime - timer > 500) {
+            //        white_state = 2;
+            //        timer = curTime;
+            //    }
+            //    break;
 
+            //case 1:
+            //    targetGC(abs(seedNumFront) < 5, 0, false);
                 if (bot.getBumper() && sideOnGray(rs)) {
-                    white_state = 2;
+                    white_state = 3;
                     timer = curTime;
                     //secondary_state = 0;
                     //switchTime = curTime;
                 }
+                if (curTime - timer > 3000) {
+                    timer = curTime;
+                    white_state = 0;
+                }
 
                 if((curTime-noGCtime)>500){
-                    white_state=0;
+                    white_state=1;
                 }
                 break;
-            case 2:
+            case 3:
                 bot.move(-70);
                 if(curTime - timer > 75) {
-                    white_state = 0;
+                    white_state = 1;
                     secondary_state = 102;
                     timer = curTime;
                 }
                 break;
-            case 3:
-                bot.move(-120, 0);
-                if(curTime - timer > 500) {
-                    white_state = 0;
-                    timer = curTime;
-                }
-            
+            //case 4:
+            //    bot.move(-120, 0);
+            //    if(curTime - timer > 500) {
+            //        white_state = 1;
+            //        timer = curTime;
+            //    }
+            //
             }
             break;
         }
@@ -467,7 +492,7 @@ void loop() {
                 target_gc = seedNumFront;
                 found = true;
             }
-            else if ((wrong_color(seedNumRight) && abs(seedNumRight)>=5) || seedNumFront == 24) {
+            else if ((wrong_color(seedNumRight) && abs(seedNumRight)>=5) || seedNumRight == 24) {
                 target_gc = seedNumRight;
                 found = true;
             }
@@ -508,13 +533,17 @@ void loop() {
                 lastSeenTime = curTime;
             }
         
-            if(bot.getBumper() || curTime - lastSeenTime > 3000
+            if( false //   bot.getBumper()
+                || curTime - lastSeenTime > 3000
                 || seedNumFront == -target_gc
                 || seedNumRight == -target_gc
                 || seedNumLeft  == -target_gc) {
                 // We hit something or we lost the GC. Go to circle's lost
-                primary_state = ON_CIRCLE;
-                secondary_state = 100;
+                //primary_state = ON_CIRCLE;
+                //secondary_state = 100;
+                //switchTime = curTime;
+                secondary_state = 2;
+                timer = curTime;
                 if (abs(target_gc == 7) || abs(target_gc == 8)) {
                     // reenable the servo
                     bot.serv.attach(10);
@@ -523,6 +552,22 @@ void loop() {
             }
             break;
         }
+        case 2:
+            bot.move(-200);
+            if (curTime - timer > 500) {
+                timer = curTime;
+                secondary_state = 3;
+            }
+            break;
+        case 3:
+            bot.move(0, 120);
+            if (curTime - timer > 200) {
+                timer = curTime;
+                switchTime = curTime;
+                primary_state = ON_CIRCLE;
+                secondary_state = 0;
+            }
+            break;
         }
         break;
     }
@@ -608,23 +653,34 @@ void setEEPROMThreshs() {
 
 void targetGC(bool seeGC, unsigned long frontVariance, bool lookRight) {
     static unsigned long lastSeenTime = 0;
-    unsigned long curtime = millis();
+    static unsigned long foundTime = 0;
+    static bool didSeeGC = false;
+    unsigned long curTime = millis();
     int factor = 1;
     if (!lookRight) factor = -1;
     if (seeGC) {
-        lastSeenTime = curtime;
+        lastSeenTime = curTime;
     }
-    if (curtime - lastSeenTime > 750) {
+    if (!didSeeGC && seeGC) {
+        foundTime = curTime;
+    }
+    didSeeGC = seeGC;
+    if (curTime - lastSeenTime > 500) {
         // We've lost it, turn around
         bot.move(0, factor*90);
     }
-    else if (curtime - lastSeenTime > 250) {
-        // We've lost it for a bit, turn back but keep moving forward
-        bot.move(200, factor*50);
+    //else if (curTime - lastSeenTime > 750) {
+    //    // We've lost it for a bit, turn back but keep moving forward
+    //    bot.move(0, factor*90);
+    //}
+    else if (curTime - foundTime < 20) {
+        bot.move(0, -factor*120);
     }
     else {
         // We've seen the GC recently, turn slightly and move forward quickly
-        bot.move(200, -factor*50);
+        //bot.move(150, -factor*40);
+        bot.move(150, -factor*20);
+        //bot.move(150);
     }
 }
 
