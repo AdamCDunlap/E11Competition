@@ -383,78 +383,51 @@ void loop() {
             static unsigned long noGCtime;
             static unsigned long turnTime;
             switch(white_state){
-            case 0:
-                bot.move(-120);
-                if (curTime - timer > 400) {
-                    white_state = 1;
-                    timer = curTime;
-                }
-                break;
-            case 1:
-                bot.move(0, 90);
-                if (abs(seedNumFront)<5 && seedNumFront != 0){
-                    noGCtime=curTime;
-                    white_state=2;
-                }
+                case 0:
+                    bot.move(0, 115);
+                    if (abs(seedNumFront)<5 && seedNumFront != 0){
+                        noGCtime=curTime;
+                        white_state=1;
+                    }
 
-                if (sideOnGray(rs)) {
-                    white_state = 1;
-                    secondary_state = 100;
-                    switchTime = curTime;
-                }
+                    if (sideOnGray(rs)) {
+                        white_state = 0;
+                        secondary_state = 0;
+                        switchTime = curTime;
+                    }
 
-                if (curTime - timer > 3000) {
-                    white_state = 0;
-                    timer = curTime;
-                }
-            
-                break;
-            case 2:
-                bot.move(120,0);
-                if (abs(seedNumFront)!=0){
-                    noGCtime=curTime;
-                }
-            //case 0:
-            //    bot.move(-120);
-            //    if(curTime - timer > 500) {
-            //        white_state = 2;
-            //        timer = curTime;
-            //    }
-            //    break;
+                    if (curTime - timer > 5000) {
+                        secondary_state = 100;
+                        timer = curTime;
+                    }
+                
+                    break;
+                case 1:
+                    bot.move(120,0);
+                    if (abs(seedNumFront)!=0){
+                        noGCtime=curTime;
+                    }
 
-            //case 1:
-            //    targetGC(abs(seedNumFront) < 5, 0, false);
-                if (bot.getBumper() && sideOnGray(rs)) {
-                    white_state = 3;
-                    timer = curTime;
-                    //secondary_state = 0;
-                    //switchTime = curTime;
-                }
-                if (curTime - timer > 3000) {
-                    timer = curTime;
-                    white_state = 0;
-                }
+                    if (sideOnGray(rs)) {
+                        white_state = 2;
+                        timer = curTime;
+                        //secondary_state = 0;
+                        //switchTime = curTime;
+                    }
 
-                if((curTime-noGCtime)>500){
-                    white_state=1;
-                }
-                break;
-            case 3:
-                bot.move(-70);
-                if(curTime - timer > 75) {
-                    white_state = 1;
-                    secondary_state = 102;
-                    timer = curTime;
-                }
-                break;
-            //case 4:
-            //    bot.move(-120, 0);
-            //    if(curTime - timer > 500) {
-            //        white_state = 1;
-            //        timer = curTime;
-            //    }
-            //
-            }
+                    if((curTime-noGCtime)>500){
+                        white_state=0;
+                    }
+                    break;
+                case 2:
+                    bot.move(-70);
+                    if(curTime - timer > 130) {
+                        white_state = 0;
+                        secondary_state = 102;
+                        timer = curTime;
+                    }
+                    break;
+               }
             break;
         }
         case 102: // stuck on gray
@@ -465,13 +438,13 @@ void loop() {
             }
             break;
         case 103:
-            bot.move(0, -120);
+            bot.move(0, -110);
             if (curTime - timer > 100) {
                 secondary_state = 0;
                 timer = curTime;
             }
             break;
-            
+
         case 10:
             //bot.serv.attach(10);
             bot.setServo(servo_out);
